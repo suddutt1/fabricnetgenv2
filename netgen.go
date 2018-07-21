@@ -31,7 +31,7 @@ func main() {
 		fmt.Println("Unable to parse the config file ", configFile)
 		os.Exit(2)
 	}
-	if !common.GenerateConfigForSingleVM(networkConfig, "./") {
+	if !common.GenerateConfigForSingleMachine(networkConfig, "./") {
 		fmt.Println("Unable to generate network configuration")
 		os.Exit(3)
 	}

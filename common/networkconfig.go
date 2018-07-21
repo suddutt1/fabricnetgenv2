@@ -18,11 +18,39 @@ const _VERSION_COMP_MAP = `
 }
 `
 
-//NetworkConfig
-type NetworkConfig struct {
-	config map[string]interface{}
+type ServiceConfig struct {
+	Version  string                 `yaml:"version,flow"`
+	Network  map[string]interface{} `yaml:"networks,omitempty"`
+	Services map[string]interface{} `yaml:"services"`
 }
 
+type Container struct {
+	Image         string            `yaml:"image,omitempty"`
+	Restart       string            `yaml:"restart,omitempty"`
+	ContainerName string            `yaml:"container_name,omitempty"`
+	TTY           bool              `yaml:"tty,omitempty"`
+	Extends       map[string]string `yaml:"extends,omitempty"`
+	Environment   []string          `yaml:"environment,omitempty"`
+	WorkingDir    string            `yaml:"working_dir,omitempty"`
+	Command       string            `yaml:"command,omitempty"`
+
+	Volumns  []string `yaml:"volumes,omitempty"`
+	Ports    []string `yaml:"ports,omitempty"`
+	Depends  []string `yaml:"depends_on,omitempty"`
+	Networks []string `yaml:"networks,omitempty"`
+}
+
+//NetworkConfig
+type NetworkConfig struct {
+	config      map[string]interface{}
+	PortManager *PortManager
+}
+
+func (nc *NetworkConfig) Init() {
+	nc.PortManager = new(PortManager)
+	nc.PortManager.Init(nc)
+	nc.DetermineImageVersions()
+}
 func (nc *NetworkConfig) UnmarshalJSON(data []byte) error {
 	nc.config = make(map[string]interface{})
 	return json.Unmarshal(data, &nc.config)
@@ -67,4 +95,19 @@ func (nc *NetworkConfig) GetVersions(version string) (string, string) {
 	coreVersion := versionMap[version]["fabricCore"]
 	thirdPartyVersion := versionMap[version]["thirdParty"]
 	return coreVersion, thirdPartyVersion
+}
+func (nc *NetworkConfig) GetOrdererMSP() string {
+	ordConfig := nc.GetOrderConfig()
+	return util.GetString(ordConfig["mspID"])
+}
+func (nc *NetworkConfig) GetOrderConfig() map[string]interface{} {
+	ordConfigInput, _ := nc.config["orderers"].(interface{})
+	ordConfig, _ := ordConfigInput.(map[string]interface{})
+	return ordConfig
+}
+func (nc *NetworkConfig) IsCARequired() bool {
+	return util.GetBoolean(nc.config["addCA"])
+}
+func (nc *NetworkConfig) IsKafkaOrderer() bool {
+	return false
 }
