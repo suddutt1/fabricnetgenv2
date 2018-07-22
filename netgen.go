@@ -14,6 +14,9 @@ func main() {
 	fmt.Println("Starting fabric network generator V2.0")
 	configFile := ""
 	flag.StringVar(&configFile, "net-config", "", "Please provide the network config json file")
+	genrateCC := false
+	flag.BoolVar(&genrateCC, "default-cc-gen", false, "Generate default chaincode[Optional]")
+
 	flag.Parse()
 	if len(configFile) == 0 {
 		flag.Usage()
@@ -35,5 +38,8 @@ func main() {
 		fmt.Println("Unable to generate network configuration")
 		os.Exit(3)
 	}
-	fmt.Println("Completed network configuration generation successfully ")
+	if genrateCC {
+		common.CreateDefaultCC(networkConfig, "./")
+	}
+	fmt.Println("\nCompleted network configuration generation successfully ")
 }

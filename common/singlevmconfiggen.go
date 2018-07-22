@@ -34,6 +34,15 @@ func GenerateConfigForSingleMachine(nc *NetworkConfig, basePath string) bool {
 		fmt.Println("Error in generating generateConfig.sh script ")
 		return false
 	}
+	if !GenerateSetPeerScript(nc, basePath+"/setPeer.sh") {
+		return false
+	}
+	if !GenerateBuildAndJoinChannelScript(nc, basePath+"/setupChannels.sh") {
+		return false
+	}
+	if !GenerateChainCodeScriptsSingleMachine(nc, basePath) {
+		return false
+	}
 	if !GenerateOtherScripts(nc, basePath) {
 		return false
 	}
@@ -58,17 +67,22 @@ func GenerateSingleMachineDockerFile(nc *NetworkConfig, basePath string) bool {
 	containers := make(map[string]interface{})
 	//Add the orderer
 	ordererContainerList := make([]string, 0)
+	cliDependencyList := make([]string, 0)
 	if !nc.IsKafkaOrderer() {
 		orderContainer := BuildOrdererSingleVMSolo(nc, ".")
 		containers[orderContainer.ContainerName] = orderContainer
 		ordererContainerList = append(ordererContainerList, orderContainer.ContainerName)
+		cliDependencyList = append(cliDependencyList, orderContainer.ContainerName)
 	}
 	//Generate the docker-compose file now
 	peerContainers := BuildPeersSingleVM(nc, ordererContainerList)
 	//Add the peerContainers into map of containers
 	for _, container := range peerContainers {
 		containers[container.ContainerName] = container
+		cliDependencyList = append(cliDependencyList, container.ContainerName)
 	}
+	cli := BuildCLIForSingleMachine("./", cliDependencyList)
+	containers[cli.ContainerName] = cli
 	serviceConf.Services = containers
 	serviceBytes, _ := yaml.Marshal(serviceConf)
 	if addCA == true {

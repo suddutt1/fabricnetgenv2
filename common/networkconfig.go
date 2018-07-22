@@ -111,3 +111,15 @@ func (nc *NetworkConfig) IsCARequired() bool {
 func (nc *NetworkConfig) IsKafkaOrderer() bool {
 	return false
 }
+func (nc *NetworkConfig) GetChaincodeDetails() []map[string]interface{} {
+	ccDetails := nc.GetRootConfig()["chaincodes"]
+	ccArray, _ := ccDetails.([]interface{})
+	ccDetailsMapArray := make([]map[string]interface{}, 0)
+	for _, ccDetails := range ccArray {
+		//fmt.Printf("\n%+v", ccDetails)
+		ccDetailsMap, _ := ccDetails.(map[string]interface{})
+		ccDetailsMapArray = append(ccDetailsMapArray, ccDetailsMap)
+
+	}
+	return ccDetailsMapArray
+}

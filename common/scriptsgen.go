@@ -117,13 +117,15 @@ rm -rf crypto-config
 rm -f *.block
 rm -f *.tx
 rm -f generateConfig.sh
-rm -f setenv.sh
-rm -f setpeer.sh
+rm -f setFabricEnv.sh
+rm -f setPeer.sh
 rm -f buildandjoinchannel.sh
 rm -f *_install.sh
 rm -f *_update.sh
 rm -f .env
 rm -f portmap.json
+rm -f downloadbin.sh
+rm -f setupChannels.sh
 echo "Done!!!"
 
 `
@@ -136,6 +138,45 @@ export TP_IMAGE_TAG="x86_64-{{.thirdPartyVersion}}"
 const _DOTENV = `
 COMPOSE_PROJECT_NAME=bc
 
+`
+const _SET_PEER_SCRIPT = `
+#!/bin/bash
+export ORDERER_CA=/opt/ws/crypto-config/ordererOrganizations/{{.orderers.domain}}/msp/tlscacerts/tlsca.{{.orderers.domain}}-cert.pem
+{{$primechannel := (index .channels 0).channelName }}
+if [ $# -lt 2 ];then
+	echo "Usage : . setPeer.sh {{range .orgs}}{{.name}}|{{end}} <peerid>"
+fi
+export peerId=$2
+{{range .orgs}}
+if [[ $1 = "{{.name}}" ]];then
+	echo "Setting to organization {{.name}} peer "$peerId
+	export CORE_PEER_ADDRESS=$peerId.{{.domain}}:7051
+	export CORE_PEER_LOCALMSPID={{.mspID}}
+	export CORE_PEER_TLS_CERT_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/$peerId.{{.domain}}/tls/server.crt
+	export CORE_PEER_TLS_KEY_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/$peerId.{{.domain}}/tls/server.key
+	export CORE_PEER_TLS_ROOTCERT_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/$peerId.{{.domain}}/tls/ca.crt
+	export CORE_PEER_MSPCONFIGPATH=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/users/Admin@{{.domain}}/msp
+fi
+{{end}}
+
+`
+const _BUILD_AND_JOIN_CHANNEL_SCRIPT = `
+#!/bin/bash -e
+{{ $orderer:= .ordererURL}}
+{{ $root := . }}
+{{range .channels}}
+{{ $channelId := print .channelName "channel" | ToLower }}
+echo "Building channel for {{print $channelId}}" 
+{{$firstOrg := (index .orgs 0) }}
+. setPeer.sh {{$firstOrg}} peer0
+export CHANNEL_NAME="{{print $channelId }}"
+peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId ".tx"}} --tls true --cafile $ORDERER_CA -t 10000
+{{ range $index,$orgName :=.orgs}}{{$orgConfig :=  index $root $orgName }}
+{{ range $i,$peerId:=$orgConfig.peerNames }}
+. setPeer.sh {{$orgName}} {{$peerId}}
+export CHANNEL_NAME="{{print $channelId }}"
+peer channel join -b $CHANNEL_NAME.block
+{{end}}{{end}}{{end}}
 `
 
 func GenerateDownloadScripts(nc *NetworkConfig, path string) bool {
@@ -203,6 +244,73 @@ func GenerateOtherScripts(nc *NetworkConfig, basePath string) bool {
 
 	return true
 }
+
+func GenerateSetPeerScript(nc *NetworkConfig, filename string) bool {
+	funcMap := template.FuncMap{
+		"ToLower": strings.ToLower,
+	}
+
+	tmpl, err := template.New("setPeer").Funcs(funcMap).Parse(_SET_PEER_SCRIPT)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+	dataMapContainer := nc.GetRootConfig()
+
+	var outputBytes bytes.Buffer
+	err = tmpl.Execute(&outputBytes, dataMapContainer)
+	if err != nil {
+		fmt.Printf("Error in generating the setpeer.sh file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
+	return true
+}
+func GenerateBuildAndJoinChannelScript(nc *NetworkConfig, filename string) bool {
+	funcMap := template.FuncMap{
+		"ToCMDString": ToCMDString,
+		"ToLower":     strings.ToLower,
+	}
+
+	tmpl, err := template.New("buildChannel").Funcs(funcMap).Parse(_BUILD_AND_JOIN_CHANNEL_SCRIPT)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+	dataMapContainer := nc.GetRootConfig()
+	channelMap := make(map[string]interface{})
+
+	orgs, _ := dataMapContainer["orgs"].([]interface{})
+	for _, org := range orgs {
+		orgConfig := util.GetMap(org)
+		peerCount := util.GetNumber(orgConfig["peerCount"])
+		peerNames := make([]string, 0)
+		fmt.Printf(" Peer count %d\n", peerCount)
+		for index := 0; index < peerCount; index++ {
+			peerNames = append(peerNames, fmt.Sprintf("peer%d", index))
+		}
+		orgConfig["peerNames"] = peerNames
+		orgName := util.GetString(orgConfig["name"])
+		channelMap[orgName] = orgConfig
+	}
+	channelMap["channels"] = dataMapContainer["channels"]
+	//Resolve the orderer name
+	ordererConfig := util.GetMap(dataMapContainer["orderers"])
+	if nc.IsKafkaOrderer() {
+		channelMap["ordererURL"] = fmt.Sprintf("%s0.%s:7050", util.GetString(ordererConfig["ordererHostname"]), util.GetString(ordererConfig["domain"]))
+	} else {
+		channelMap["ordererURL"] = fmt.Sprintf("%s.%s:7050", util.GetString(ordererConfig["ordererHostname"]), util.GetString(ordererConfig["domain"]))
+	}
+	var outputBytes bytes.Buffer
+	err = tmpl.Execute(&outputBytes, channelMap)
+	if err != nil {
+		fmt.Printf("Error in generating the channel setup script file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
+	return true
+}
+
 func ToCMDString(input string) string {
 	return "`" + input + "`"
 }
