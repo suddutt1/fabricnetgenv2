@@ -2,7 +2,7 @@ package common
 
 import util "github.com/suddutt1/fabricnetgenv2/util"
 
-func BuildOrdererSingleVMSolo(nc *NetworkConfig, cryptoBasePath string) Container {
+func BuildOrdererContainer(nc *NetworkConfig, cryptoBasePath string) Container {
 	ordererName := util.GetString(nc.GetOrderConfig()["ordererHostname"])
 	domainName := util.GetString(nc.GetOrderConfig()["domain"])
 	extnds := make(map[string]string)
@@ -24,7 +24,10 @@ func BuildOrdererSingleVMSolo(nc *NetworkConfig, cryptoBasePath string) Containe
 	orderer.Extends = extnds
 	orderer.Volumns = vols
 	orderer.Ports = ports
-	orderer.Networks = networks
-
+	if nc.IsMultiMachine() {
+		orderer.NetworkMode = "host"
+	} else {
+		orderer.Networks = networks
+	}
 	return orderer
 }

@@ -16,8 +16,25 @@ func main() {
 	flag.StringVar(&configFile, "net-config", "", "Please provide the network config json file")
 	genrateCC := false
 	flag.BoolVar(&genrateCC, "default-cc-gen", false, "Generate default chaincode[Optional]")
-
+	isSingleMachConfExample := false
+	flag.BoolVar(&isSingleMachConfExample, "help-single", false, "Generate example network-config file (Single machine)[Optional]")
+	isMultiMachConfExample := false
+	flag.BoolVar(&isMultiMachConfExample, "help-multi", false, "Generate example network-config file (Multiple machine)[Optional]")
+	isHelp := false
+	flag.BoolVar(&isHelp, "help", false, "Prints this help text ")
 	flag.Parse()
+	if isHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+	if isSingleMachConfExample {
+		common.GenerateExampleConfigSingleMachine()
+		os.Exit(0)
+	}
+	if isMultiMachConfExample {
+		common.GenerateExampleConfigMultiMachine()
+		os.Exit(0)
+	}
 	if len(configFile) == 0 {
 		flag.Usage()
 		os.Exit(1)

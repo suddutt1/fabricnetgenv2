@@ -72,7 +72,7 @@ func GenerateSingleMachineDockerFile(nc *NetworkConfig, basePath string) bool {
 	ordererContainerList := make([]string, 0)
 	cliDependencyList := make([]string, 0)
 	if !nc.IsKafkaOrderer() {
-		orderContainer := BuildOrdererSingleVMSolo(nc, ".")
+		orderContainer := BuildOrdererContainer(nc, ".")
 		containers[orderContainer.ContainerName] = orderContainer
 		ordererContainerList = append(ordererContainerList, orderContainer.ContainerName)
 		cliDependencyList = append(cliDependencyList, orderContainer.ContainerName)

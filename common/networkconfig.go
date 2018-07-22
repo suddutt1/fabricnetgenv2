@@ -33,11 +33,11 @@ type Container struct {
 	Environment   []string          `yaml:"environment,omitempty"`
 	WorkingDir    string            `yaml:"working_dir,omitempty"`
 	Command       string            `yaml:"command,omitempty"`
-
-	Volumns  []string `yaml:"volumes,omitempty"`
-	Ports    []string `yaml:"ports,omitempty"`
-	Depends  []string `yaml:"depends_on,omitempty"`
-	Networks []string `yaml:"networks,omitempty"`
+	Volumns       []string          `yaml:"volumes,omitempty"`
+	Ports         []string          `yaml:"ports,omitempty"`
+	Depends       []string          `yaml:"depends_on,omitempty"`
+	Networks      []string          `yaml:"networks,omitempty"`
+	NetworkMode   string            `yaml:"network_mode,omitempty"`
 }
 
 //NetworkConfig
@@ -122,4 +122,7 @@ func (nc *NetworkConfig) GetChaincodeDetails() []map[string]interface{} {
 
 	}
 	return ccDetailsMapArray
+}
+func (nc *NetworkConfig) IsMultiMachine() bool {
+	return util.GetBoolean(nc.GetRootConfig()["multiMachine"])
 }
