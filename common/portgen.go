@@ -14,11 +14,15 @@ type PortManager struct {
 	allocationMap    map[string]string
 	startPort        int
 	lastPortAssigned int
+	isMultiMachine   bool
 }
 
 func (pm *PortManager) Init(nc *NetworkConfig) {
 	//Check the networkconfig inputs and initializes various
 	//variables
+	if nc.IsMultiMachine() {
+		pm.isMultiMachine = true
+	}
 	if util.IfEntryExistsInMap(nc.GetRootConfig(), "startPort") {
 		pm.isContineousPort = true
 		pm.startPort = util.GetNumber(nc.GetRootConfig()["startPort"])
@@ -56,6 +60,11 @@ func (pm *PortManager) GetGRPCPort(peerHostName string) string {
 }
 func (pm *PortManager) allocatePort(hostname, basePort string) string {
 	key := fmt.Sprintf("%s:%s", hostname, basePort)
+	if pm.isMultiMachine {
+		returnValue := fmt.Sprintf("%s:%s", basePort, basePort)
+		pm.allocationMap[key] = basePort
+		return returnValue
+	}
 	if pm.isContineousPort {
 		returnValue := fmt.Sprintf("%d:%s", pm.lastPortAssigned, basePort)
 		pm.allocationMap[key] = fmt.Sprintf("%d", pm.lastPortAssigned)

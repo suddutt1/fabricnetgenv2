@@ -51,9 +51,18 @@ func main() {
 		fmt.Println("Unable to parse the config file ", configFile)
 		os.Exit(2)
 	}
-	if !common.GenerateConfigForSingleMachine(networkConfig, "./") {
-		fmt.Println("Unable to generate network configuration")
-		os.Exit(3)
+	if networkConfig.IsMultiMachine() {
+		if !common.GenerateConfigForMultipleMachine(networkConfig, "./") {
+			fmt.Println("Unable to generate network configuration for multiple machines")
+			os.Exit(3)
+		}
+
+	} else {
+
+		if !common.GenerateConfigForSingleMachine(networkConfig, "./") {
+			fmt.Println("Unable to generate network configuration")
+			os.Exit(3)
+		}
 	}
 	if genrateCC {
 		common.CreateDefaultCC(networkConfig, "./")
