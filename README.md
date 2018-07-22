@@ -21,7 +21,7 @@ Each of the above mentioned configuration will generate the following
 4. Generation of a default chaincode for example
 
 ### TODO:
-1. Introduce CA
-2. Introduce Kafka ordering
-3. Multi Machine Configuration ( Features to be added TBD)
-    
+1. Introduce CA ( Single machine)
+2. Introduce Kafka ordering ( Single machine)
+3. Multi machine configuration ( Features to be added TBD)
+4. K8S configuration    
