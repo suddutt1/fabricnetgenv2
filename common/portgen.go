@@ -1,18 +1,29 @@
 package common
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+
+	util "github.com/suddutt1/fabricnetgenv2/util"
+)
 
 type PortManager struct {
 	isContineousPort bool
 	portMap          map[string][]string
 	allocationMap    map[string]string
 	startPort        int
-	lastPort         int
+	lastPortAssigned int
 }
 
 func (pm *PortManager) Init(nc *NetworkConfig) {
 	//Check the networkconfig inputs and initializes various
 	//variables
+	if util.IfEntryExistsInMap(nc.GetRootConfig(), "startPort") {
+		pm.isContineousPort = true
+		pm.startPort = util.GetNumber(nc.GetRootConfig()["startPort"])
+		pm.lastPortAssigned = pm.startPort
+	}
 	pm.portMap = make(map[string][]string)
 	pm.allocationMap = make(map[string]string)
 	pm.generateSequence(7050) //For orderer
@@ -45,6 +56,12 @@ func (pm *PortManager) GetGRPCPort(peerHostName string) string {
 }
 func (pm *PortManager) allocatePort(hostname, basePort string) string {
 	key := fmt.Sprintf("%s:%s", hostname, basePort)
+	if pm.isContineousPort {
+		returnValue := fmt.Sprintf("%d:%s", pm.lastPortAssigned, basePort)
+		pm.allocationMap[key] = fmt.Sprintf("%d", pm.lastPortAssigned)
+		pm.lastPortAssigned = pm.lastPortAssigned + 1
+		return returnValue
+	}
 	if availablePortList, isOk := pm.portMap[basePort]; isOk && len(availablePortList) > 0 {
 		port := availablePortList[0]
 		returnValue := fmt.Sprintf("%s:%s", port, basePort)
@@ -53,4 +70,9 @@ func (pm *PortManager) allocatePort(hostname, basePort string) string {
 		return returnValue
 	}
 	return "######"
+}
+func (pm *PortManager) PrintAllocationMap(filePath string) bool {
+	prettyBytes, _ := json.MarshalIndent(pm.allocationMap, "", " ")
+	ioutil.WriteFile(filePath, prettyBytes, 0666)
+	return true
 }

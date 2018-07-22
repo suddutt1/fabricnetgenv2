@@ -46,11 +46,14 @@ func GenerateConfigForSingleMachine(nc *NetworkConfig, basePath string) bool {
 	if !GenerateOtherScripts(nc, basePath) {
 		return false
 	}
+	if !GenerateRemoveImagesScript(nc, basePath+"/removeOldImages.sh") {
+		return false
+	}
 	if !GenerateCleanUpScript(nc, basePath+"/cleanup.sh") {
 		fmt.Println("Error in generatng cleanup.sh script")
 		return false
 	}
-
+	nc.PortManager.PrintAllocationMap(basePath + "/portMap.json")
 	return true
 }
 

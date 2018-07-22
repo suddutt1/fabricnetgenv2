@@ -123,9 +123,10 @@ rm -f buildandjoinchannel.sh
 rm -f *_install.sh
 rm -f *_update.sh
 rm -f .env
-rm -f portmap.json
+rm -f portMap.json
 rm -f downloadbin.sh
 rm -f setupChannels.sh
+rm -f removeOldImages.sh
 echo "Done!!!"
 
 `
@@ -177,6 +178,12 @@ peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $chann
 export CHANNEL_NAME="{{print $channelId }}"
 peer channel join -b $CHANNEL_NAME.block
 {{end}}{{end}}{{end}}
+`
+
+const _REMOVE_OLD_CC_IMAGES = `
+#!/bin/bash -e
+docker rmi -f {{ "docker images dev* -aq" | ToCMDString }}
+
 `
 
 func GenerateDownloadScripts(nc *NetworkConfig, path string) bool {
@@ -266,6 +273,28 @@ func GenerateSetPeerScript(nc *NetworkConfig, filename string) bool {
 	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
 	return true
 }
+func GenerateRemoveImagesScript(nc *NetworkConfig, filename string) bool {
+	funcMap := template.FuncMap{
+		"ToCMDString": ToCMDString,
+	}
+
+	tmpl, err := template.New("setPeer").Funcs(funcMap).Parse(_REMOVE_OLD_CC_IMAGES)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+	dataMapContainer := nc.GetRootConfig()
+
+	var outputBytes bytes.Buffer
+	err = tmpl.Execute(&outputBytes, dataMapContainer)
+	if err != nil {
+		fmt.Printf("Error in generating the docker image removal script file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
+	return true
+}
+
 func GenerateBuildAndJoinChannelScript(nc *NetworkConfig, filename string) bool {
 	funcMap := template.FuncMap{
 		"ToCMDString": ToCMDString,
