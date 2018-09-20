@@ -84,7 +84,7 @@ func GenerateSingleMachineDockerFile(nc *NetworkConfig, basePath string) bool {
 		containers[container.ContainerName] = container
 		cliDependencyList = append(cliDependencyList, container.ContainerName)
 	}
-	cli := BuildCLIForSingleMachine("./", cliDependencyList)
+	cli := BuildCLIContainer("./", cliDependencyList, nc)
 	containers[cli.ContainerName] = cli
 	serviceConf.Services = containers
 	serviceBytes, _ := yaml.Marshal(serviceConf)

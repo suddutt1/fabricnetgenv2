@@ -56,9 +56,7 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	vols = append(vols, "/var/run/:/host/var/run/")
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/peers/"+peerFQDN+"/msp:/etc/hyperledger/fabric/msp")
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/peers/"+peerFQDN+"/tls:/etc/hyperledger/fabric/tls")
-	var depends = make([]string, 0)
-	depends = append(depends, couchID)
-	depends = append(depends, otherDependencies...)
+
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
 
@@ -66,12 +64,20 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	container.ContainerName = peerFQDN
 	container.Environment = peerEnvironment
 	container.Volumns = vols
-	container.Depends = depends
-	container.Networks = networks
+
 	ports := make([]string, 0)
 	ports = append(ports, nc.PortManager.GetGRPCPort(peerFQDN))
 	ports = append(ports, nc.PortManager.GetEventPort(peerFQDN))
+	if nc.IsMultiMachine() {
+		container.NetworkMode = "host"
+	} else {
+		container.Networks = networks
+		var depends = make([]string, 0)
+		depends = append(depends, couchID)
+		depends = append(depends, otherDependencies...)
+		container.Depends = depends
 
+	}
 	container.Ports = ports
 	container.Extends = extnds
 
@@ -88,9 +94,13 @@ func BuildCouchDB(couchID string, nc *NetworkConfig) Container {
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
 
-	couchContainer.Networks = networks
 	ports := make([]string, 0)
 	ports = append(ports, nc.PortManager.GetCouchPort(couchID))
 	couchContainer.Ports = ports
+	if nc.IsMultiMachine() {
+		couchContainer.NetworkMode = "host"
+	} else {
+		couchContainer.Networks = networks
+	}
 	return couchContainer
 }

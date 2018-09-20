@@ -1,6 +1,6 @@
 package common
 
-func BuildCLIForSingleMachine(dirPath string, otherConatiners []string) Container {
+func BuildCLIContainer(dirPath string, otherConatiners []string, nc *NetworkConfig) Container {
 	var cli Container
 	cli.ContainerName = "cli"
 	cli.Image = "hyperledger/fabric-tools:${IMAGE_TAG}"
@@ -19,10 +19,15 @@ func BuildCLIForSingleMachine(dirPath string, otherConatiners []string) Containe
 
 	cli.Environment = cliEnvironment
 	cli.Volumns = vols
-	cli.Depends = otherConatiners
-	var networks = make([]string, 0)
-	networks = append(networks, "fabricnetwork")
-	cli.Networks = networks
+
+	if nc.IsMultiMachine() {
+		cli.NetworkMode = "host"
+	} else {
+		var networks = make([]string, 0)
+		networks = append(networks, "fabricnetwork")
+		cli.Networks = networks
+		cli.Depends = otherConatiners
+	}
 	return cli
 
 }

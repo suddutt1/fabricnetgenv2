@@ -2,6 +2,7 @@ package common
 
 import util "github.com/suddutt1/fabricnetgenv2/util"
 
+//BuildOrdererContainer build the solo order container
 func BuildOrdererContainer(nc *NetworkConfig, cryptoBasePath string) Container {
 	ordererName := util.GetString(nc.GetOrderConfig()["ordererHostname"])
 	domainName := util.GetString(nc.GetOrderConfig()["domain"])
