@@ -44,12 +44,14 @@ type Container struct {
 type NetworkConfig struct {
 	config      map[string]interface{}
 	PortManager *PortManager
+	Orgfolders  []string
 }
 
 func (nc *NetworkConfig) Init() {
 	nc.PortManager = new(PortManager)
 	nc.PortManager.Init(nc)
 	nc.DetermineImageVersions()
+	nc.Orgfolders = make([]string, 0)
 }
 func (nc *NetworkConfig) UnmarshalJSON(data []byte) error {
 	nc.config = make(map[string]interface{})
@@ -125,4 +127,7 @@ func (nc *NetworkConfig) GetChaincodeDetails() []map[string]interface{} {
 }
 func (nc *NetworkConfig) IsMultiMachine() bool {
 	return util.GetBoolean(nc.GetRootConfig()["multiMachine"])
+}
+func (nc *NetworkConfig) AddGeneratedFolder(folderName string) {
+	nc.Orgfolders = append(nc.Orgfolders, folderName)
 }

@@ -1,7 +1,9 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -13,7 +15,8 @@ import (
 func GenerateConfigForMultipleMachine(nc *NetworkConfig, basePath string) bool {
 
 	nc.Init()
-	commonArtifactsPath := basePath + "/common"
+	commonArtifactsPath := basePath + "common"
+	createDir(commonArtifactsPath, nil)
 	if !GenerateDownloadScripts(nc, commonArtifactsPath) {
 		fmt.Println("Error in generating download scritps")
 		return false
@@ -62,18 +65,67 @@ func GenerateConfigForMultipleMachine(nc *NetworkConfig, basePath string) bool {
 		fmt.Println("Error in generatng cleanup.sh script")
 		return false
 	}
-	GenerateDistributeConfig(nc, basePath)
+	GenerateDistributeConfigScript(nc, basePath)
 
 	return true
 }
-func GenerateDistributeConfig(nc *NetworkConfig, basePath string) {
+func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
+	shFileContents := `
+	#!/bin/bash -e
+	function copyFiles()
+	{
+		destFolder=$1
+		cp -r ./crypto-config/ $destFolder
+		cp common/base.yaml $destFolder
+		cp common/*.tx $destFolder
+		cp common/*.block $destFolder
+
+	}
+
+	{{ range $index,$folder := .Orgfolders}}
+	 "./$folder"
+	{{end}}
+	`
+	tmpl, err := template.New("distShellSctipt").Parse(shFileContents)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+
+	var outputBytes bytes.Buffer
+	err = tmpl.Execute(&outputBytes, nc)
+	if err != nil {
+		fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(basePath+"./distFiles.sh", outputBytes.Bytes(), 0777)
+	deleletAllShContent := `
+	#!/bin/bash -e
+	{{ range $index,$folder := .Orgfolders}}
+	rm -rf ./$folder
+    {{end}}
+
+	`
+	tmpl, err = template.New("delShellSctipt").Parse(deleletAllShContent)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+
+	err = tmpl.Execute(&outputBytes, nc)
+	if err != nil {
+		fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(basePath+"./deleteAllOrgs.sh", outputBytes.Bytes(), 0777)
+	return true
 
 }
 func GenerateMultiMachineOrderer(nc *NetworkConfig, basePath string) bool {
 	ordererContainer := BuildOrdererContainer(nc, ".")
 	ordererBaseDir := basePath + "/orderer/"
 
-	if !createDir(ordererBaseDir) {
+	if !createDir(ordererBaseDir, nc) {
 
 		return false
 	}
@@ -102,7 +154,7 @@ func GenerateMultiMachinePeers(nc *NetworkConfig, basePath string) bool {
 			orgName, _ := orgConfig["name"].(string)
 			peerDir := fmt.Sprintf("%s/%s-%s/", basePath, peerID, strings.ToLower(orgName))
 			couchDir := fmt.Sprintf("%s/%s-couch-%s/", basePath, peerID, strings.ToLower(orgName))
-			if !createDir(peerDir) || !createDir(couchDir) {
+			if !createDir(peerDir, nc) || !createDir(couchDir, nc) {
 				return false
 			}
 
@@ -115,17 +167,20 @@ func GenerateMultiMachinePeers(nc *NetworkConfig, basePath string) bool {
 	cliDir := basePath + "/cli/"
 
 	cliContainer := BuildCLIContainer("./", []string{}, nc)
-	if !createDir(cliDir) {
+	if !createDir(cliDir, nc) {
 		return false
 	}
 	GenerateComposeYamlFile([]Container{cliContainer}, cliDir+"docker-compose.yaml")
 	return true
 }
-func createDir(dirPath string) bool {
+func createDir(dirPath string, nc *NetworkConfig) bool {
 	err := os.MkdirAll(dirPath, 0777)
 	if err != nil {
 		fmt.Printf("\nUnable to generate directory %+v\n", err)
 		return false
+	}
+	if nc != nil {
+		nc.AddGeneratedFolder(dirPath)
 	}
 	return true
 }
