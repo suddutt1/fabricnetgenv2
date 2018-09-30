@@ -129,5 +129,6 @@ func (nc *NetworkConfig) IsMultiMachine() bool {
 	return util.GetBoolean(nc.GetRootConfig()["multiMachine"])
 }
 func (nc *NetworkConfig) AddGeneratedFolder(folderName string) {
+	fmt.Println("Creating direcotory ", folderName)
 	nc.Orgfolders = append(nc.Orgfolders, folderName)
 }

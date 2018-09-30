@@ -16,8 +16,8 @@ func GenerateConfigForMultipleMachine(nc *NetworkConfig, basePath string) bool {
 
 	nc.Init()
 	commonArtifactsPath := basePath + "common"
-	createDir(commonArtifactsPath, nil)
-	if !GenerateDownloadScripts(nc, commonArtifactsPath) {
+	createDir(commonArtifactsPath, nc)
+	if !GenerateDownloadScripts(nc, commonArtifactsPath+"/") {
 		fmt.Println("Error in generating download scritps")
 		return false
 	}
@@ -30,7 +30,7 @@ func GenerateConfigForMultipleMachine(nc *NetworkConfig, basePath string) bool {
 		fmt.Println("Error in generating crypto-config.yaml")
 		return false
 	}
-	if !GenerateBaseYAML(nc, commonArtifactsPath) {
+	if !GenerateBaseYAML(nc, commonArtifactsPath+"/") {
 		fmt.Println("Error in generating base.yaml")
 		return false
 	}
@@ -51,7 +51,7 @@ func GenerateConfigForMultipleMachine(nc *NetworkConfig, basePath string) bool {
 	if !GenerateBuildAndJoinChannelScript(nc, commonArtifactsPath+"/setupChannels.sh") {
 		return false
 	}
-	if !GenerateChainCodeScriptsSingleMachine(nc, commonArtifactsPath) {
+	if !GenerateChainCodeScriptsSingleMachine(nc, commonArtifactsPath+"/") {
 		return false
 	}
 
@@ -75,7 +75,7 @@ func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
 	function copyFiles()
 	{
 		destFolder=$1
-		cp -r ./crypto-config/ $destFolder
+		cp -r common/crypto-config/ $destFolder
 		cp common/base.yaml $destFolder
 		cp common/*.tx $destFolder
 		cp common/*.block $destFolder
@@ -83,7 +83,9 @@ func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
 	}
 
 	{{ range $index,$folder := .Orgfolders}}
-	 "./$folder"
+	{{if (ne $folder "./common")}}
+	 copyFiles {{$folder}}
+	{{end}}
 	{{end}}
 	`
 	tmpl, err := template.New("distShellSctipt").Parse(shFileContents)
@@ -95,14 +97,15 @@ func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, nc)
 	if err != nil {
-		fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+		fmt.Printf("Error in generating the distFiles.sh file %v\n", err)
 		return false
 	}
 	ioutil.WriteFile(basePath+"./distFiles.sh", outputBytes.Bytes(), 0777)
+
 	deleletAllShContent := `
 	#!/bin/bash -e
 	{{ range $index,$folder := .Orgfolders}}
-	rm -rf ./$folder
+	rm -rf {{$folder}}
     {{end}}
 
 	`
@@ -111,25 +114,25 @@ func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
-
-	err = tmpl.Execute(&outputBytes, nc)
+	var outputBytesDelAll bytes.Buffer
+	err = tmpl.Execute(&outputBytesDelAll, nc)
 	if err != nil {
-		fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+		fmt.Printf("Error in generating the deleteAllOrgs file %v\n", err)
 		return false
 	}
-	ioutil.WriteFile(basePath+"./deleteAllOrgs.sh", outputBytes.Bytes(), 0777)
+	ioutil.WriteFile(basePath+"./deleteAllOrgs.sh", outputBytesDelAll.Bytes(), 0777)
 	return true
 
 }
 func GenerateMultiMachineOrderer(nc *NetworkConfig, basePath string) bool {
 	ordererContainer := BuildOrdererContainer(nc, ".")
-	ordererBaseDir := basePath + "/orderer/"
+	ordererBaseDir := basePath + "orderer"
 
 	if !createDir(ordererBaseDir, nc) {
 
 		return false
 	}
-	GenerateComposeYamlFile([]Container{ordererContainer}, ordererBaseDir+"docker-compose.yaml")
+	GenerateComposeYamlFile([]Container{ordererContainer}, ordererBaseDir+"/docker-compose.yaml")
 	return true
 }
 
@@ -152,28 +155,29 @@ func GenerateMultiMachinePeers(nc *NetworkConfig, basePath string) bool {
 			//containers = append(containers, couchContainer)
 			//containers = append(containers, peerContainer)
 			orgName, _ := orgConfig["name"].(string)
-			peerDir := fmt.Sprintf("%s/%s-%s/", basePath, peerID, strings.ToLower(orgName))
-			couchDir := fmt.Sprintf("%s/%s-couch-%s/", basePath, peerID, strings.ToLower(orgName))
+			peerDir := fmt.Sprintf("%s%s-%s/", basePath, peerID, strings.ToLower(orgName))
+			couchDir := fmt.Sprintf("%s%s-couch-%s/", basePath, peerID, strings.ToLower(orgName))
 			if !createDir(peerDir, nc) || !createDir(couchDir, nc) {
 				return false
 			}
 
-			GenerateComposeYamlFile([]Container{peerContainer}, peerDir+"docker-compose.yaml")
-			GenerateComposeYamlFile([]Container{couchContainer}, couchDir+"docker-compose.yaml")
+			GenerateComposeYamlFile([]Container{peerContainer}, peerDir+"./docker-compose.yaml")
+			GenerateComposeYamlFile([]Container{couchContainer}, couchDir+"./docker-compose.yaml")
 			couchCount++
 
 		}
 	}
-	cliDir := basePath + "/cli/"
-
-	cliContainer := BuildCLIContainer("./", []string{}, nc)
+	cliDir := basePath + "cli/"
 	if !createDir(cliDir, nc) {
 		return false
 	}
-	GenerateComposeYamlFile([]Container{cliContainer}, cliDir+"docker-compose.yaml")
+	cliContainer := BuildCLIContainer("./", []string{}, nc)
+
+	GenerateComposeYamlFile([]Container{cliContainer}, cliDir+"./docker-compose.yaml")
 	return true
 }
 func createDir(dirPath string, nc *NetworkConfig) bool {
+	fmt.Println("Found", dirPath)
 	err := os.MkdirAll(dirPath, 0777)
 	if err != nil {
 		fmt.Printf("\nUnable to generate directory %+v\n", err)
