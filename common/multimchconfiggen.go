@@ -77,8 +77,14 @@ func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
 		destFolder=$1
 		cp -r common/crypto-config/ $destFolder
 		cp common/base.yaml $destFolder
-		cp common/*.tx $destFolder
-		cp common/*.block $destFolder
+		cp common/setFabricEnv.sh $destFolder
+		if [[ $1 == *"cli"* ]];then
+			cp common/*.tx $destFolder
+			cp common/*.sh $destFolder
+		fi
+		if [[ $1 == *"orderer"* ]];then
+			cp common/genesis.block $destFolder
+		fi
 
 	}
 

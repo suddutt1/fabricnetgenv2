@@ -10,7 +10,12 @@ func GenerateBaseYAML(nc *NetworkConfig, basePath string) bool {
 	var peerbase Container
 	peerEnvironment := make([]string, 0)
 	peerEnvironment = append(peerEnvironment, "CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock")
-	peerEnvironment = append(peerEnvironment, "CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=bc_fabricnetwork")
+	if nc.IsMultiMachine() {
+		peerEnvironment = append(peerEnvironment, "CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=host")
+	} else {
+		peerEnvironment = append(peerEnvironment, "CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=bc_fabricnetwork")
+	}
+
 	peerEnvironment = append(peerEnvironment, "CORE_LOGGING_LEVEL=DEBUG")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_ENABLED=true")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_ENDORSER_ENABLED=true")
