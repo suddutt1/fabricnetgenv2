@@ -64,7 +64,7 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	container.ContainerName = peerFQDN
 	container.Environment = peerEnvironment
 	container.Volumns = vols
-
+	nc.AddHost(peerFQDN)
 	ports := make([]string, 0)
 	ports = append(ports, nc.PortManager.GetGRPCPort(peerFQDN))
 	ports = append(ports, nc.PortManager.GetEventPort(peerFQDN))
@@ -87,6 +87,7 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 func BuildCouchDB(couchID string, nc *NetworkConfig) Container {
 	var couchContainer Container
 	couchContainer.ContainerName = couchID
+	nc.AddHost(couchID)
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
 	extnds["service"] = "couchdb"

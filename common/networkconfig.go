@@ -45,6 +45,7 @@ type NetworkConfig struct {
 	config      map[string]interface{}
 	PortManager *PortManager
 	Orgfolders  []string
+	Hosts       []string
 }
 
 func (nc *NetworkConfig) Init() {
@@ -52,6 +53,7 @@ func (nc *NetworkConfig) Init() {
 	nc.PortManager.Init(nc)
 	nc.DetermineImageVersions()
 	nc.Orgfolders = make([]string, 0)
+	nc.Hosts = make([]string, 0)
 }
 func (nc *NetworkConfig) UnmarshalJSON(data []byte) error {
 	nc.config = make(map[string]interface{})
@@ -131,4 +133,7 @@ func (nc *NetworkConfig) IsMultiMachine() bool {
 func (nc *NetworkConfig) AddGeneratedFolder(folderName string) {
 	fmt.Println("Creating direcotory ", folderName)
 	nc.Orgfolders = append(nc.Orgfolders, folderName)
+}
+func (nc *NetworkConfig) AddHost(host string) {
+	nc.Hosts = append(nc.Hosts, host)
 }

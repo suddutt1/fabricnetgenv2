@@ -25,6 +25,7 @@ func BuildOrdererContainer(nc *NetworkConfig, cryptoBasePath string) Container {
 	orderer.Extends = extnds
 	orderer.Volumns = vols
 	orderer.Ports = ports
+	nc.AddHost(ordFQDN)
 	if nc.IsMultiMachine() {
 		orderer.NetworkMode = "host"
 	} else {

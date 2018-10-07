@@ -127,6 +127,15 @@ func GenerateDistributeConfigScript(nc *NetworkConfig, basePath string) bool {
 		return false
 	}
 	ioutil.WriteFile(basePath+"./deleteAllOrgs.sh", outputBytesDelAll.Bytes(), 0777)
+	//etc/hosts entry
+	hostEntryBytes := make([]byte, 0)
+	for _, hostName := range nc.Hosts {
+		hostEntry := fmt.Sprintf("\t%s\n", hostName)
+		lineBytes := []byte(hostEntry)
+		hostEntryBytes = append(hostEntryBytes, lineBytes...)
+	}
+	ioutil.WriteFile(basePath+"./hostentries", hostEntryBytes, 0666)
+
 	return true
 
 }
