@@ -99,13 +99,17 @@ func GenerateChainCodeScriptsSingleMachine(nc *NetworkConfig, path string) bool 
 }
 
 func CreateDefaultCC(nc *NetworkConfig, basePath string) bool {
-	os.Mkdir(basePath+"/chaincode", 0777)
-	ccDetailsList := nc.GetChaincodeDetails()
-	for _, ccDetails := range ccDetailsList {
-		ccPath := util.GetString(ccDetails["src"])
-		fmt.Printf("\nCreating chaincode path: %s", ccPath)
-		os.MkdirAll(basePath+"/chaincode/"+ccPath, 0777)
-		ioutil.WriteFile(basePath+"/chaincode/"+ccPath+"/"+"sc_main.go", []byte(_BASE_CHAIN_CODE), 0666)
+	os.Mkdir(basePath+"/cli/chaincode", 0777)
+	if nc != nil {
+		ccDetailsList := nc.GetChaincodeDetails()
+		for _, ccDetails := range ccDetailsList {
+			ccPath := util.GetString(ccDetails["src"])
+			fmt.Printf("\nCreating chaincode path: %s", ccPath)
+			os.MkdirAll(basePath+"/cli/chaincode/"+ccPath, 0777)
+			ioutil.WriteFile(basePath+"/cli/chaincode/"+ccPath+"/"+"sc_main.go", []byte(_BASE_CHAIN_CODE), 0666)
+		}
+	} else {
+		fmt.Println(_BASE_CHAIN_CODE)
 	}
 	return true
 }

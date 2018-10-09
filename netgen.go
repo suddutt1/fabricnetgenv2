@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting fabric network generator V2.0")
+
 	configFile := ""
 	flag.StringVar(&configFile, "net-config", "", "Please provide the network config json file")
 	genrateCC := false
@@ -35,10 +35,16 @@ func main() {
 		common.GenerateExampleConfigMultiMachine()
 		os.Exit(0)
 	}
+	if genrateCC {
+		common.CreateDefaultCC(nil, "./")
+	}
 	if len(configFile) == 0 {
-		flag.Usage()
+		if !genrateCC {
+			flag.Usage()
+		}
 		os.Exit(1)
 	}
+	fmt.Println("Starting fabric network generator V2.0")
 	fmt.Println("Using config file ", configFile)
 	configBytes, err := ioutil.ReadFile(configFile)
 	if err != nil {
